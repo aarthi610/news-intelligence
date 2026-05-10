@@ -30,6 +30,7 @@ def fetch_and_store(query="technology", language="en", pages=3):
             res = httpx.get(BASE_URL, params=params, timeout=15)
             res.raise_for_status()
             data = res.json()
+            print(res.text)
         except Exception as e:
             print(f"Fetch error: {e}")
             break

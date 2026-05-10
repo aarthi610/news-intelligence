@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>News Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    :root {
+      --bg: #0e0f11;
+      --bg2: #16181c;
+      --bg3: #1e2026;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --text: #f0f0ee;
+      --muted: #8a8a85;
+      --hint: #52524e;
+      --accent: #d4f060;
+      --accent2: #a8c43a;
+      --pos: #6fcf97;
+      --pos-bg: rgba(111,207,151,0.1);
+      --neg: #eb5757;
+      --neg-bg: rgba(235,87,87,0.1);
+      --neu: #8a8a85;
+      --neu-bg: rgba(138,138,133,0.1);
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* Top bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border2);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .run-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 18px;
+      border-radius: var(--radius);
+      background: var(--accent);
+      color: #0e0f11;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s;
+    }
+
+    .run-btn:hover { background: var(--accent2); transform: translateY(-1px); }
+    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Main layout */
+    .main { max-width: 1200px; margin: 0 auto; padding: 32px 32px 64px; }
+
+    /* Stats row */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .stat {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px 20px;
+      transition: border-color 0.2s;
+    }
+
+    .stat:hover { border-color: var(--border2); }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-value.pos { color: var(--pos); }
+    .stat-value.neg { color: var(--neg); }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .controls-label {
+      font-size: 12px;
+      color: var(--hint);
+      margin-right: 4px;
+    }
+
+    .filter-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+
+    .filter-btn.active {
+      background: var(--accent);
+      color: #0e0f11;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .filter-btn.pos-filter.active { background: var(--pos); border-color: var(--pos); }
+    .filter-btn.neg-filter.active { background: var(--neg); border-color: var(--neg); }
+    .filter-btn.neu-filter.active { background: var(--muted); border-color: var(--muted); }
+
+    /* Section header */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .article-count {
+      font-size: 12px;
+      color: var(--hint);
+    }
+
+    /* Articles grid */
+    .articles {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: default;
+    }
+
+    .card:hover {
+      border-color: var(--border2);
+      transform: translateY(-2px);
+    }
+
+    .card-img {
+      width: 100%;
+      height: 140px;
+      border-radius: var(--radius);
+      object-fit: cover;
+      background: var(--bg3);
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .source {
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .dot { color: var(--hint); }
+
+    .sentiment {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .s-positive { background: var(--pos-bg); color: var(--pos); }
+    .s-negative { background: var(--neg-bg); color: var(--neg); }
+    .s-neutral  { background: var(--neu-bg); color: var(--neu); }
+
+    .card-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .card-summary {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .insights-label {
+      font-size: 10px;
+      color: var(--hint);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+
+    .insights { display: flex; flex-direction: column; gap: 5px; }
+
+    .insight {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      line-height: 1.4;
+    }
+
+    .insight-dot {
+      width: 4px; height: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 5px;
+    }
+
+    .card-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .date { font-size: 11px; color: var(--hint); }
+
+    .read-link {
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.15s;
+    }
+
+    .read-link:hover { color: var(--accent); }
+
+    /* Loading state */
+    .loading {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 0;
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .loading i { font-size: 28px; color: var(--hint); }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinning { animation: spin 1s linear infinite; }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 32px;
+    }
+
+    .page-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .page-btn:hover { border-color: var(--border2); color: var(--text); }
+    .page-btn.active { background: var(--accent); color: #0e0f11; border-color: var(--accent); font-weight: 700; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      font-size: 13px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.3s;
+      z-index: 999;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success i { color: var(--pos); }
+    .toast.error i { color: var(--neg); }
+
+    /* No articles state */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 4rem 0;
+      color: var(--muted);
+    }
+    .empty-state i { font-size: 36px; color: var(--hint); display: block; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; margin-bottom: 6px; }
+    .empty-state small { font-size: 12px; color: var(--hint); }
+
+    /* Search bar */
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+      max-width: 340px;
+    }
+
+    .search-wrap i {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      color: var(--hint);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 7px 32px 7px 32px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--bg2);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .search-input::placeholder { color: var(--hint); }
+    .search-input:focus { border-color: var(--border2); background: var(--bg3); }
+
+    .search-clear {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--hint);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      display: none;
+      line-height: 1;
+    }
+
+    .search-clear.visible { display: block; }
+    .search-clear:hover { color: var(--muted); }
+
+    /* Category chips */
+    .category-chips {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .chip-label {
+      font-size: 12px;
+      color: var(--hint);
+      margin-right: 2px;
+    }
+
+    .chip {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--hint);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: capitalize;
+    }
+
+    .chip:hover { border-color: var(--border2); color: var(--muted); }
+    .chip.active { background: var(--bg3); border-color: var(--border2); color: var(--text); }
+
+    @media (max-width: 640px) {
+      .topbar { padding: 14px 16px; }
+      .main { padding: 20px 16px 48px; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .articles { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top navigation bar -->
+<nav class="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    News Intelligence
+  </div>
+  <div class="topbar-right">
+
+    <button class="run-btn" id="pipeline-btn">
+      <i class="ti ti-refresh"></i> Fetch & Analyze
+    </button>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total articles</div>
+      <div class="stat-value" id="s-total">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Neutral</div>
+      <div class="stat-value" id="s-neu" style="color:var(--neu)">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Positive</div>
+      <div class="stat-value pos" id="s-pos">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Negative</div>
+      <div class="stat-value neg" id="s-neg">—</div>
+    </div>
+    <div class="stat" style="cursor:pointer" onclick="showBookmarks()">
+      <div class="stat-label">Bookmarks</div>
+      <div class="stat-value" id="s-bookmarks" style="color:var(--accent)">—</div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="controls">
+    <span class="controls-label">Filter:</span>
+    <button class="filter-btn active" data-s="" id="tab-all">All</button>
+    <button class="filter-btn pos-filter" data-s="positive">Positive</button>
+    <button class="filter-btn neg-filter" data-s="negative">Negative</button>
+    <button class="filter-btn neu-filter" data-s="neutral">Neutral</button>
+
+    <!-- Search -->
+    <div class="search-wrap" style="margin-left:auto">
+      <i class="ti ti-search"></i>
+      <input class="search-input" id="search-input" type="text" placeholder="Search articles…" autocomplete="off">
+      <button class="search-clear" id="search-clear" title="Clear search"><i class="ti ti-x"></i></button>
+    </div>
+
+    <button class="filter-btn" id="tab-bookmarks" onclick="showBookmarks()">
+      <i class="ti ti-bookmark" style="font-size:12px;vertical-align:-1px;margin-right:4px"></i>Saved
+    </button>
+  </div>
+
+  <!-- Category chips (populated dynamically) -->
+  <div class="category-chips" id="category-chips" style="display:none">
+    <span class="chip-label">Category:</span>
+  </div>
+
+  <!-- Section header -->
+  <div class="section-header">
+    <span class="section-title" id="section-title">Latest Articles</span>
+    <span class="article-count" id="article-count"></span>
+  </div>
+
+  <!-- Articles -->
+  <div id="articles-grid" class="articles">
+    <div class="loading">
+      <i class="ti ti-loader spinning"></i>
+      Loading articles…
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination"></div>
+
+</main>
+
+<!-- Toast notification -->
+<div class="toast" id="toast">
+  <i class="ti ti-check"></i>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+  const API = 'https://news-intelligence-backend.onrender.com/';
+  let currentPage = 1;
+  let currentSentiment = '';
+  let currentSearch = '';
+  let currentCategory = '';
+  let searchDebounce = null;
+  let totalArticles = 0;
+
+  // Toast helper
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    const icon = t.querySelector('i');
+    t.className = `toast ${type} show`;
+    icon.className = type === 'success' ? 'ti ti-check' : 'ti ti-x';
+    document.getElementById('toast-msg').textContent = msg;
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // Load stats
+  async function loadStats() {
+    try {
+      const r = await fetch(`${API}/stats`);
+      const d = await r.json();
+      document.getElementById('s-total').textContent = d.total_articles ?? '—';
+      const sb = d.sentiment_breakdown || {};
+      document.getElementById('s-pos').textContent = sb.positive ?? 0;
+      document.getElementById('s-neg').textContent = sb.negative ?? 0;
+      document.getElementById('s-neu').textContent = sb.neutral ?? 0;
+      document.getElementById('s-bookmarks').textContent = d.bookmarks ?? 0;
+    } catch(e) {
+      console.log('Stats unavailable');
+    }
+  }
+
+  // Load articles
+  async function loadArticles(page = 1, sentiment = '', search = '', category = '') {
+    const grid = document.getElementById('articles-grid');
+    grid.innerHTML = '<div class="loading"><i class="ti ti-loader spinning"></i>Fetching articles…</div>';
+    document.getElementById('article-count').textContent = '';
+
+    let url = `${API}/articles?page=${page}&limit=6`;
+    if (sentiment) url += `&sentiment=${encodeURIComponent(sentiment)}`;
+    if (search)    url += `&search=${encodeURIComponent(search)}`;
+    if (category)  url += `&category=${encodeURIComponent(category)}`;
+
+    try {
+      const r = await fetch(url);
+      const d = await r.json();
+      totalArticles = d.total || 0;
+      renderArticles(d.articles || [], d.total || 0, page);
+      buildCategoryChips(d.articles || []);
+    } catch(e) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <i class="ti ti-plug-off"></i>
+          <p>Backend not connected</p>
+          <small>Run <code>uvicorn main:app --reload</code> in your backend folder</small>
+        </div>`;
+    }
+  }
+
+  // Build category chips from current result set
+  function buildCategoryChips(articles) {
+    const wrap = document.getElementById('category-chips');
+    // Collect unique categories
+    const cats = new Set();
+    articles.forEach(a => {
+      if (a.category) a.category.split(',').forEach(c => {
+        const t = c.trim();
+        if (t) cats.add(t);
+      });
+    });
+    if (cats.size === 0) { wrap.style.display = 'none'; return; }
+
+    // Keep any existing active chip label
+    wrap.innerHTML = '<span class="chip-label">Category:</span>';
+    cats.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'chip' + (currentCategory === cat ? ' active' : '');
+      btn.textContent = cat;
+      btn.onclick = () => {
+        currentCategory = currentCategory === cat ? '' : cat;
+        currentPage = 1;
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        if (currentCategory) btn.classList.add('active');
+        loadArticles(1, currentSentiment, currentSearch, currentCategory);
+      };
+      wrap.appendChild(btn);
+    });
+    wrap.style.display = 'flex';
+  }
+
+  // Build card
+  function buildCard(a) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    const sc = a.sentiment === 'positive' ? 's-positive' : a.sentiment === 'negative' ? 's-negative' : 's-neutral';
+    const date = a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '';
+    const insightsHtml = (a.insights || []).slice(0, 3)
+      .map(i => `<div class="insight"><div class="insight-dot"></div>${i}</div>`)
+      .join('');
+
+    div.innerHTML = `
+      ${a.image_url ? `<img class="card-img" src="${a.image_url}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
+      <div class="card-meta">
+        <span class="source"><i class="ti ti-news" style="font-size:11px"></i>${a.source || 'unknown'}</span>
+        ${a.sentiment ? `<span class="dot">·</span><span class="sentiment ${sc}">${a.sentiment}</span>` : ''}
+      </div>
+      <div class="card-title">${a.title}</div>
+      ${a.summary ? `<div class="card-summary">${a.summary}</div>` : ''}
+      ${insightsHtml ? `
+        <div class="insights-label">Key insights</div>
+        <div class="insights">${insightsHtml}</div>` : ''}
+      <div class="card-footer">
+        <span class="date">${date}</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="bookmark-btn" data-id="${a.id}" data-bookmarked="${a.bookmarked || false}"
+            title="${a.bookmarked ? 'Remove bookmark' : 'Save article'}"
+            style="background:none;border:none;cursor:pointer;color:${a.bookmarked ? 'var(--accent)' : 'var(--hint)'};font-size:16px;padding:0;transition:color 0.15s">
+            <i class="ti ${a.bookmarked ? 'ti-bookmark-filled' : 'ti-bookmark'}"></i>
+          </button>
+          <a class="read-link" href="${a.url || '#'}" target="_blank" rel="noopener">
+            Read <i class="ti ti-arrow-up-right" style="font-size:11px"></i>
+          </a>
+        </div>
+      </div>`;
+
+    // Attach bookmark toggle
+    div.querySelector('.bookmark-btn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const id = btn.dataset.id;
+      const isBookmarked = btn.dataset.bookmarked === 'true';
+      try {
+        if (isBookmarked) {
+          await fetch(`${API}/bookmarks/${id}`, { method: 'DELETE' });
+          btn.dataset.bookmarked = 'false';
+          btn.style.color = 'var(--hint)';
+          btn.querySelector('i').className = 'ti ti-bookmark';
+          btn.title = 'Save article';
+          showToast('Bookmark removed', 'success');
+        } else {
+          await fetch(`${API}/bookmarks/${id}`, { method: 'POST' });
+          btn.dataset.bookmarked = 'true';
+          btn.style.color = 'var(--accent)';
+          btn.querySelector('i').className = 'ti ti-bookmark-filled';
+          btn.title = 'Remove bookmark';
+          showToast('Article saved!', 'success');
+        }
+        await loadStats();
+      } catch(err) {
+        showToast('Failed to update bookmark', 'error');
+      }
+    });
+
+    return div;
+  }
+
+  // Render articles
+  function renderArticles(articles, total, page) {
+    const grid = document.getElementById('articles-grid');
+    grid.innerHTML = '';
+
+    if (!articles.length) {
+      grid.innerHTML = `
+        <div class="empty-state">
+          <i class="ti ti-article-off"></i>
+          <p>No articles found</p>
+          <small>Try a different filter or search term</small>
+        </div>`;
+      return;
+    }
+
+    articles.forEach(a => grid.appendChild(buildCard(a)));
+    document.getElementById('article-count').textContent = `${total} articles`;
+    renderPagination(total, page);
+  }
+
+  // Pagination
+  function renderPagination(total, page) {
+    const pages = Math.ceil(total / 6);
+    const p = document.getElementById('pagination');
+    p.innerHTML = '';
+    if (pages <= 1) return;
+    for (let i = 1; i <= Math.min(pages, 5); i++) {
+      const b = document.createElement('button');
+      b.className = 'page-btn' + (i === page ? ' active' : '');
+      b.textContent = i;
+      b.onclick = () => { currentPage = i; loadArticles(i, currentSentiment, currentSearch, currentCategory); window.scrollTo({top:0,behavior:'smooth'}); };
+      p.appendChild(b);
+    }
+  }
+
+  // Bookmarks view
+  async function showBookmarks() {
+    const grid = document.getElementById('articles-grid');
+    const title = document.getElementById('section-title');
+    document.getElementById('pagination').innerHTML = '';
+    document.getElementById('article-count').textContent = '';
+    document.getElementById('category-chips').style.display = 'none';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-bookmarks').classList.add('active');
+    title.textContent = 'Saved Articles';
+    grid.innerHTML = '<div class="loading"><i class="ti ti-loader spinning"></i>Loading bookmarks…</div>';
+    try {
+      const r = await fetch(`${API}/bookmarks`);
+      const d = await r.json();
+      const items = d.bookmarks || [];
+      grid.innerHTML = '';
+      if (!items.length) {
+        grid.innerHTML = `<div class="empty-state"><i class="ti ti-bookmark-off"></i><p>No bookmarks yet</p><small>Click the bookmark icon on any article to save it</small></div>`;
+        return;
+      }
+      items.forEach(a => {
+        a.bookmarked = true;
+        grid.appendChild(buildCard(a));
+      });
+      document.getElementById('article-count').textContent = `${items.length} saved`;
+    } catch(e) {
+      grid.innerHTML = `<div class="empty-state"><i class="ti ti-plug-off"></i><p>Could not load bookmarks</p></div>`;
+    }
+  }
+
+  // Search input wiring
+  const searchInput = document.getElementById('search-input');
+  const searchClear = document.getElementById('search-clear');
+
+  searchInput.addEventListener('input', () => {
+    const val = searchInput.value.trim();
+    searchClear.classList.toggle('visible', val.length > 0);
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      currentSearch = val;
+      currentPage = 1;
+      currentCategory = '';
+      document.getElementById('section-title').textContent = val ? `Results for "${val}"` : 'Latest Articles';
+      loadArticles(1, currentSentiment, currentSearch, '');
+    }, 350);
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchClear.classList.remove('visible');
+    currentSearch = '';
+    currentPage = 1;
+    currentCategory = '';
+    document.getElementById('section-title').textContent = 'Latest Articles';
+    loadArticles(1, currentSentiment, '', '');
+    searchInput.focus();
+  });
+
+  // Filter buttons (exclude bookmark tab from sentiment filters)
+  document.querySelectorAll('.filter-btn[data-s]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentSentiment = btn.dataset.s;
+      currentCategory = '';
+      currentPage = 1;
+      document.getElementById('section-title').textContent = 'Latest Articles';
+      loadArticles(1, currentSentiment, currentSearch, '');
+    });
+  });
+
+  // Pipeline button
+  document.getElementById('pipeline-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('pipeline-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader spinning"></i> Running…';
+    try {
+      const r = await fetch(`${API}/pipeline/run`, { method: 'POST' });
+      const d = await r.json();
+      showToast(`Done! Fetched ${d.fetched ?? 0} new articles`, 'success');
+      await loadStats();
+      await loadArticles(1, currentSentiment, currentSearch, currentCategory);
+    } catch(e) {
+      showToast('Pipeline failed — is the backend running?', 'error');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ti ti-refresh"></i> Fetch & Analyze';
+  });
+
+  // Init
+  loadStats();
+  loadArticles();
+</script>
+</body>
+</html>

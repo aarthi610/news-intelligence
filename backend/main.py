@@ -2,9 +2,11 @@ from fastapi import FastAPI, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from database import get_db, Article, AIAnalysis, Bookmark
+from database import get_db, Article, AIAnalysis, Bookmark, Base, engine
 from fetcher import fetch_and_store
 from analyzer import analyze_unprocessed
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="News Intelligence API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

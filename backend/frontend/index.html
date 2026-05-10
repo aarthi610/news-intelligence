@@ -625,7 +625,7 @@
   // Load stats
   async function loadStats() {
     try {
-      const r = await fetch(`${API}/stats`);
+      const r = await fetch(`${API}/api/stats`);
       const d = await r.json();
       document.getElementById('s-total').textContent = d.total_articles ?? '—';
       const sb = d.sentiment_breakdown || {};
@@ -644,7 +644,7 @@
     grid.innerHTML = '<div class="loading"><i class="ti ti-loader spinning"></i>Fetching articles…</div>';
     document.getElementById('article-count').textContent = '';
 
-    let url = `${API}/articles?page=${page}&limit=6`;
+    let url = `${API}/api/articles?page=${page}&limit=6`;
     if (sentiment) url += `&sentiment=${encodeURIComponent(sentiment)}`;
     if (search)    url += `&search=${encodeURIComponent(search)}`;
     if (category)  url += `&category=${encodeURIComponent(category)}`;
@@ -738,14 +738,14 @@
       const isBookmarked = btn.dataset.bookmarked === 'true';
       try {
         if (isBookmarked) {
-          await fetch(`${API}/bookmarks/${id}`, { method: 'DELETE' });
+          await fetch(`${API}/api/bookmarks/${id}`, { method: 'DELETE' });
           btn.dataset.bookmarked = 'false';
           btn.style.color = 'var(--hint)';
           btn.querySelector('i').className = 'ti ti-bookmark';
           btn.title = 'Save article';
           showToast('Bookmark removed', 'success');
         } else {
-          await fetch(`${API}/bookmarks/${id}`, { method: 'POST' });
+          await fetch(`${API}/api/bookmarks/${id}`, { method: 'POST' });
           btn.dataset.bookmarked = 'true';
           btn.style.color = 'var(--accent)';
           btn.querySelector('i').className = 'ti ti-bookmark-filled';
@@ -808,7 +808,7 @@
     title.textContent = 'Saved Articles';
     grid.innerHTML = '<div class="loading"><i class="ti ti-loader spinning"></i>Loading bookmarks…</div>';
     try {
-      const r = await fetch(`${API}/bookmarks`);
+      const r = await fetch(`${API}/api/bookmarks`);
       const d = await r.json();
       const items = d.bookmarks || [];
       grid.innerHTML = '';
@@ -873,7 +873,7 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="ti ti-loader spinning"></i> Running…';
     try {
-      const r = await fetch(`${API}/pipeline/run`, { method: 'POST' });
+      const r = await fetch(`${API}/api/pipeline/run`, { method: 'POST' });
       const d = await r.json();
       showToast(`Done! Fetched ${d.fetched ?? 0} new articles`, 'success');
       await loadStats();

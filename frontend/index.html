@@ -419,6 +419,90 @@
     .empty-state p { font-size: 14px; margin-bottom: 6px; }
     .empty-state small { font-size: 12px; color: var(--hint); }
 
+    /* Search bar */
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      min-width: 200px;
+      max-width: 340px;
+    }
+
+    .search-wrap i {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      color: var(--hint);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 7px 32px 7px 32px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--bg2);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .search-input::placeholder { color: var(--hint); }
+    .search-input:focus { border-color: var(--border2); background: var(--bg3); }
+
+    .search-clear {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--hint);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      display: none;
+      line-height: 1;
+    }
+
+    .search-clear.visible { display: block; }
+    .search-clear:hover { color: var(--muted); }
+
+    /* Category chips */
+    .category-chips {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .chip-label {
+      font-size: 12px;
+      color: var(--hint);
+      margin-right: 2px;
+    }
+
+    .chip {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: transparent;
+      color: var(--hint);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: capitalize;
+    }
+
+    .chip:hover { border-color: var(--border2); color: var(--muted); }
+    .chip.active { background: var(--bg3); border-color: var(--border2); color: var(--text); }
+
     @media (max-width: 640px) {
       .topbar { padding: 14px 16px; }
       .main { padding: 20px 16px 48px; }
@@ -463,20 +547,40 @@
       <div class="stat-label">Negative</div>
       <div class="stat-value neg" id="s-neg">—</div>
     </div>
+    <div class="stat" style="cursor:pointer" onclick="showBookmarks()">
+      <div class="stat-label">Bookmarks</div>
+      <div class="stat-value" id="s-bookmarks" style="color:var(--accent)">—</div>
+    </div>
   </div>
 
   <!-- Filters -->
   <div class="controls">
     <span class="controls-label">Filter:</span>
-    <button class="filter-btn active" data-s="">All</button>
+    <button class="filter-btn active" data-s="" id="tab-all">All</button>
     <button class="filter-btn pos-filter" data-s="positive">Positive</button>
     <button class="filter-btn neg-filter" data-s="negative">Negative</button>
     <button class="filter-btn neu-filter" data-s="neutral">Neutral</button>
+
+    <!-- Search -->
+    <div class="search-wrap" style="margin-left:auto">
+      <i class="ti ti-search"></i>
+      <input class="search-input" id="search-input" type="text" placeholder="Search articles…" autocomplete="off">
+      <button class="search-clear" id="search-clear" title="Clear search"><i class="ti ti-x"></i></button>
+    </div>
+
+    <button class="filter-btn" id="tab-bookmarks" onclick="showBookmarks()">
+      <i class="ti ti-bookmark" style="font-size:12px;vertical-align:-1px;margin-right:4px"></i>Saved
+    </button>
+  </div>
+
+  <!-- Category chips (populated dynamically) -->
+  <div class="category-chips" id="category-chips" style="display:none">
+    <span class="chip-label">Category:</span>
   </div>
 
   <!-- Section header -->
   <div class="section-header">
-    <span class="section-title">Latest Articles</span>
+    <span class="section-title" id="section-title">Latest Articles</span>
     <span class="article-count" id="article-count"></span>
   </div>
 
@@ -503,6 +607,9 @@
   const API = 'http://localhost:8000/api';
   let currentPage = 1;
   let currentSentiment = '';
+  let currentSearch = '';
+  let currentCategory = '';
+  let searchDebounce = null;
   let totalArticles = 0;
 
   // Toast helper
@@ -525,25 +632,29 @@
       document.getElementById('s-pos').textContent = sb.positive ?? 0;
       document.getElementById('s-neg').textContent = sb.negative ?? 0;
       document.getElementById('s-neu').textContent = sb.neutral ?? 0;
+      document.getElementById('s-bookmarks').textContent = d.bookmarks ?? 0;
     } catch(e) {
       console.log('Stats unavailable');
     }
   }
 
   // Load articles
-  async function loadArticles(page = 1, sentiment = '') {
+  async function loadArticles(page = 1, sentiment = '', search = '', category = '') {
     const grid = document.getElementById('articles-grid');
     grid.innerHTML = '<div class="loading"><i class="ti ti-loader spinning"></i>Fetching articles…</div>';
     document.getElementById('article-count').textContent = '';
 
     let url = `${API}/articles?page=${page}&limit=6`;
-    if (sentiment) url += `&sentiment=${sentiment}`;
+    if (sentiment) url += `&sentiment=${encodeURIComponent(sentiment)}`;
+    if (search)    url += `&search=${encodeURIComponent(search)}`;
+    if (category)  url += `&category=${encodeURIComponent(category)}`;
 
     try {
       const r = await fetch(url);
       const d = await r.json();
       totalArticles = d.total || 0;
       renderArticles(d.articles || [], d.total || 0, page);
+      buildCategoryChips(d.articles || []);
     } catch(e) {
       grid.innerHTML = `
         <div class="empty-state">
@@ -552,6 +663,37 @@
           <small>Run <code>uvicorn main:app --reload</code> in your backend folder</small>
         </div>`;
     }
+  }
+
+  // Build category chips from current result set
+  function buildCategoryChips(articles) {
+    const wrap = document.getElementById('category-chips');
+    // Collect unique categories
+    const cats = new Set();
+    articles.forEach(a => {
+      if (a.category) a.category.split(',').forEach(c => {
+        const t = c.trim();
+        if (t) cats.add(t);
+      });
+    });
+    if (cats.size === 0) { wrap.style.display = 'none'; return; }
+
+    // Keep any existing active chip label
+    wrap.innerHTML = '<span class="chip-label">Category:</span>';
+    cats.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'chip' + (currentCategory === cat ? ' active' : '');
+      btn.textContent = cat;
+      btn.onclick = () => {
+        currentCategory = currentCategory === cat ? '' : cat;
+        currentPage = 1;
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        if (currentCategory) btn.classList.add('active');
+        loadArticles(1, currentSentiment, currentSearch, currentCategory);
+      };
+      wrap.appendChild(btn);
+    });
+    wrap.style.display = 'flex';
   }
 
   // Build card
@@ -577,10 +719,45 @@
         <div class="insights">${insightsHtml}</div>` : ''}
       <div class="card-footer">
         <span class="date">${date}</span>
-        <a class="read-link" href="${a.url || '#'}" target="_blank" rel="noopener">
-          Read article <i class="ti ti-arrow-up-right" style="font-size:11px"></i>
-        </a>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="bookmark-btn" data-id="${a.id}" data-bookmarked="${a.bookmarked || false}"
+            title="${a.bookmarked ? 'Remove bookmark' : 'Save article'}"
+            style="background:none;border:none;cursor:pointer;color:${a.bookmarked ? 'var(--accent)' : 'var(--hint)'};font-size:16px;padding:0;transition:color 0.15s">
+            <i class="ti ${a.bookmarked ? 'ti-bookmark-filled' : 'ti-bookmark'}"></i>
+          </button>
+          <a class="read-link" href="${a.url || '#'}" target="_blank" rel="noopener">
+            Read <i class="ti ti-arrow-up-right" style="font-size:11px"></i>
+          </a>
+        </div>
       </div>`;
+
+    // Attach bookmark toggle
+    div.querySelector('.bookmark-btn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const id = btn.dataset.id;
+      const isBookmarked = btn.dataset.bookmarked === 'true';
+      try {
+        if (isBookmarked) {
+          await fetch(`${API}/bookmarks/${id}`, { method: 'DELETE' });
+          btn.dataset.bookmarked = 'false';
+          btn.style.color = 'var(--hint)';
+          btn.querySelector('i').className = 'ti ti-bookmark';
+          btn.title = 'Save article';
+          showToast('Bookmark removed', 'success');
+        } else {
+          await fetch(`${API}/bookmarks/${id}`, { method: 'POST' });
+          btn.dataset.bookmarked = 'true';
+          btn.style.color = 'var(--accent)';
+          btn.querySelector('i').className = 'ti ti-bookmark-filled';
+          btn.title = 'Remove bookmark';
+          showToast('Article saved!', 'success');
+        }
+        await loadStats();
+      } catch(err) {
+        showToast('Failed to update bookmark', 'error');
+      }
+    });
+
     return div;
   }
 
@@ -594,7 +771,7 @@
         <div class="empty-state">
           <i class="ti ti-article-off"></i>
           <p>No articles found</p>
-          <small>Try a different filter or run the pipeline to fetch articles</small>
+          <small>Try a different filter or search term</small>
         </div>`;
       return;
     }
@@ -614,23 +791,83 @@
       const b = document.createElement('button');
       b.className = 'page-btn' + (i === page ? ' active' : '');
       b.textContent = i;
-      b.onclick = () => { currentPage = i; loadArticles(i, currentSentiment); window.scrollTo({top:0,behavior:'smooth'}); };
+      b.onclick = () => { currentPage = i; loadArticles(i, currentSentiment, currentSearch, currentCategory); window.scrollTo({top:0,behavior:'smooth'}); };
       p.appendChild(b);
     }
   }
 
-  // Filter buttons
-  document.querySelectorAll('.filter-btn').forEach(btn => {
+  // Bookmarks view
+  async function showBookmarks() {
+    const grid = document.getElementById('articles-grid');
+    const title = document.getElementById('section-title');
+    document.getElementById('pagination').innerHTML = '';
+    document.getElementById('article-count').textContent = '';
+    document.getElementById('category-chips').style.display = 'none';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-bookmarks').classList.add('active');
+    title.textContent = 'Saved Articles';
+    grid.innerHTML = '<div class="loading"><i class="ti ti-loader spinning"></i>Loading bookmarks…</div>';
+    try {
+      const r = await fetch(`${API}/bookmarks`);
+      const d = await r.json();
+      const items = d.bookmarks || [];
+      grid.innerHTML = '';
+      if (!items.length) {
+        grid.innerHTML = `<div class="empty-state"><i class="ti ti-bookmark-off"></i><p>No bookmarks yet</p><small>Click the bookmark icon on any article to save it</small></div>`;
+        return;
+      }
+      items.forEach(a => {
+        a.bookmarked = true;
+        grid.appendChild(buildCard(a));
+      });
+      document.getElementById('article-count').textContent = `${items.length} saved`;
+    } catch(e) {
+      grid.innerHTML = `<div class="empty-state"><i class="ti ti-plug-off"></i><p>Could not load bookmarks</p></div>`;
+    }
+  }
+
+  // Search input wiring
+  const searchInput = document.getElementById('search-input');
+  const searchClear = document.getElementById('search-clear');
+
+  searchInput.addEventListener('input', () => {
+    const val = searchInput.value.trim();
+    searchClear.classList.toggle('visible', val.length > 0);
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      currentSearch = val;
+      currentPage = 1;
+      currentCategory = '';
+      document.getElementById('section-title').textContent = val ? `Results for "${val}"` : 'Latest Articles';
+      loadArticles(1, currentSentiment, currentSearch, '');
+    }, 350);
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchClear.classList.remove('visible');
+    currentSearch = '';
+    currentPage = 1;
+    currentCategory = '';
+    document.getElementById('section-title').textContent = 'Latest Articles';
+    loadArticles(1, currentSentiment, '', '');
+    searchInput.focus();
+  });
+
+  // Filter buttons (exclude bookmark tab from sentiment filters)
+  document.querySelectorAll('.filter-btn[data-s]').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentSentiment = btn.dataset.s;
+      currentCategory = '';
       currentPage = 1;
-      loadArticles(1, currentSentiment);
+      document.getElementById('section-title').textContent = 'Latest Articles';
+      loadArticles(1, currentSentiment, currentSearch, '');
     });
   });
 
-  // Pipeline button — FIXED (no sendPrompt)
+  // Pipeline button
   document.getElementById('pipeline-btn').addEventListener('click', async () => {
     const btn = document.getElementById('pipeline-btn');
     btn.disabled = true;
@@ -640,7 +877,7 @@
       const d = await r.json();
       showToast(`Done! Fetched ${d.fetched ?? 0} new articles`, 'success');
       await loadStats();
-      await loadArticles(1, currentSentiment);
+      await loadArticles(1, currentSentiment, currentSearch, currentCategory);
     } catch(e) {
       showToast('Pipeline failed — is the backend running?', 'error');
     }

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, Query
+from fastapi import FastAPI, Depends, Query, BackgroundTasks  # ← add BackgroundTasks here
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -12,7 +12,7 @@ app = FastAPI(title="News Intelligence API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
-# ── Articles ────────────────────────────────────────────────────────────────
+# ── Articles ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/articles")
 def get_articles(
@@ -23,7 +23,6 @@ def get_articles(
     offset = (page - 1) * limit
     query = (db.query(Article, AIAnalysis)
                .outerjoin(AIAnalysis, Article.article_id == AIAnalysis.article_id))
-
     if sentiment:
         query = query.filter(AIAnalysis.sentiment == sentiment)
     if category:
@@ -35,10 +34,8 @@ def get_articles(
             Article.description.ilike(term) |
             Article.source.ilike(term)
         )
-
     total = query.count()
     rows  = query.order_by(Article.published_at.desc()).offset(offset).limit(limit).all()
-
     articles = []
     for art, ai in rows:
         articles.append({
@@ -53,7 +50,7 @@ def get_articles(
     return {"articles": articles, "total": total, "page": page}
 
 
-# ── Stats ───────────────────────────────────────────────────────────────────
+# ── Stats ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/stats")
 def get_stats(db: Session = Depends(get_db)):
@@ -72,20 +69,27 @@ def get_stats(db: Session = Depends(get_db)):
     }
 
 
-# ── Pipeline ─────────────────────────────────────────────────────────────────
+# ── Pipeline background task ──────────────────────────────────────────────────
 
-@app.post("/api/pipeline/run")
-def run_pipeline(query: str = Query(default="technology or sports or business or politics or science")):
-    fetched = fetch_and_store(query=query, pages=15)   # up to 150 articles
+def run_pipeline_task(query: str):                          # ← NEW helper function
+    fetched = fetch_and_store(query=query, pages=3)
     analyze_unprocessed(limit=fetched or 20)
-    return {"status": "done", "fetched": fetched}
+    print(f"✓ Pipeline complete: {fetched} articles")
 
 
-# ── Bookmarks ────────────────────────────────────────────────────────────────
+@app.post("/api/pipeline/run")                              # ← REPLACED old route
+def run_pipeline(
+    background_tasks: BackgroundTasks,
+    query: str = Query(default="technology or sports or business or politics or science")
+):
+    background_tasks.add_task(run_pipeline_task, query)
+    return {"status": "started", "message": "Pipeline running in background"}
+
+
+# ── Bookmarks ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/bookmarks")
 def get_bookmarks(db: Session = Depends(get_db)):
-    """Return all bookmarked articles with their AI analysis."""
     rows = (
         db.query(Article, AIAnalysis)
           .join(Bookmark, Bookmark.article_id == Article.article_id)
@@ -111,16 +115,13 @@ def get_bookmarks(db: Session = Depends(get_db)):
 
 @app.post("/api/bookmarks/{article_id}")
 def add_bookmark(article_id: str, db: Session = Depends(get_db)):
-    """Bookmark an article. Idempotent — safe to call multiple times."""
     exists = db.query(Bookmark).filter_by(article_id=article_id).first()
     if exists:
         return {"status": "already_bookmarked", "article_id": article_id}
-
     article = db.query(Article).filter_by(article_id=article_id).first()
     if not article:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Article not found")
-
     db.add(Bookmark(article_id=article_id))
     db.commit()
     return {"status": "bookmarked", "article_id": article_id}
@@ -128,7 +129,6 @@ def add_bookmark(article_id: str, db: Session = Depends(get_db)):
 
 @app.delete("/api/bookmarks/{article_id}")
 def remove_bookmark(article_id: str, db: Session = Depends(get_db)):
-    """Remove a bookmark."""
     bookmark = db.query(Bookmark).filter_by(article_id=article_id).first()
     if not bookmark:
         from fastapi import HTTPException
@@ -136,6 +136,9 @@ def remove_bookmark(article_id: str, db: Session = Depends(get_db)):
     db.delete(bookmark)
     db.commit()
     return {"status": "removed", "article_id": article_id}
+
+
+# ── Frontend ──────────────────────────────────────────────────────────────────
 
 from fastapi.staticfiles import StaticFiles
 import os

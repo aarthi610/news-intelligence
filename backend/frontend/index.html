@@ -871,19 +871,23 @@
   document.getElementById('pipeline-btn').addEventListener('click', async () => {
     const btn = document.getElementById('pipeline-btn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="ti ti-loader spinning"></i> Running…';
+    btn.innerHTML = '<i class="ti ti-loader spinning"></i> Fetching…';
     try {
-      const r = await fetch(`${API}/api/pipeline/run`, { method: 'POST' });
-      const d = await r.json();
-      showToast(`Done! Fetched ${d.fetched ?? 0} new articles`, 'success');
-      await loadStats();
-      await loadArticles(1, currentSentiment, currentSearch, currentCategory);
+      await fetch(`${API}/api/pipeline/run`, { method: 'POST' });
+      showToast('Pipeline started! Refreshing in 30 seconds…', 'success');
+      // Wait 30 seconds for background task to finish, then reload
+      setTimeout(async () => {
+        await loadStats();
+        await loadArticles(1, currentSentiment);
+        showToast('Articles updated!', 'success');
+      }, 30000);
     } catch(e) {
       showToast('Pipeline failed — is the backend running?', 'error');
     }
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-refresh"></i> Fetch & Analyze';
   });
+  
 
   // Init
   loadStats();

@@ -77,10 +77,10 @@ def run_pipeline_task(query: str):                          # ← NEW helper fun
     print(f"✓ Pipeline complete: {fetched} articles")
 
 
-@app.post("/api/pipeline/run")                              # ← REPLACED old route
+@app.post("/api/pipeline/run")
 def run_pipeline(
     background_tasks: BackgroundTasks,
-    query: str = Query(default="technology or sports or business or politics or science")
+    query: str = Query(default="technology")   # ← simple single word
 ):
     background_tasks.add_task(run_pipeline_task, query)
     return {"status": "started", "message": "Pipeline running in background"}

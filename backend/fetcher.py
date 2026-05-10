@@ -7,7 +7,7 @@ load_dotenv()
 API_KEY = os.getenv("NEWSDATA_API_KEY")
 BASE_URL = "https://newsdata.io/api/1/news"
 
-def fetch_and_store(query="technology", language="en", pages=15):
+def fetch_and_store(query="technology", language="en", pages=3):
     """
     Fetches up to 150 articles (15 pages x 10 per page).
     NewsData.io free tier returns 10 results per page.
@@ -22,8 +22,6 @@ def fetch_and_store(query="technology", language="en", pages=15):
             "apikey": API_KEY,
             "q": query,
             "language": language,
-            "size": 10,
-            "timeframe": 72,  # last 24 hours for fresher articles
         }
         if next_page:
             params["page"] = next_page
